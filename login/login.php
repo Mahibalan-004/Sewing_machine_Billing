@@ -20,7 +20,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST"){
 
         // FIXED SQL — select password + role
         $sql = "SELECT id, username, password, role 
-                FROM employees 
+                FROM users 
                 WHERE username='$username'";
 
         $result = mysqli_query($conn, $sql);

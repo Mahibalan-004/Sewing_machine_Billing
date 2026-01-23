@@ -3,16 +3,17 @@ session_start();
 require_once("../config/db.php");
 require_once("../includes/functions.php");
 
-// Check login
-if(!isset($_SESSION['user_id'])){
+if (!isset($_SESSION['user_id'])) {
     redirect("../login/login.php");
 }
 
 $success = "";
-$error = "";
+$error   = "";
 
-// Insert new stock
-if($_SERVER['REQUEST_METHOD'] == "POST"){
+/* ======================
+   HANDLE FORM SUBMIT
+====================== */
+if ($_SERVER['REQUEST_METHOD'] === "POST") {
 
     $item_name     = clean($_POST['item_name']);
     $brand         = clean($_POST['brand']);
@@ -26,26 +27,24 @@ if($_SERVER['REQUEST_METHOD'] == "POST"){
     $total_price   = floatval($_POST['total_price']);
     $warranty      = intval($_POST['warranty_months']);
 
-    // Old stock always 0 for new items
-    $old_stock  = 0;
+    $old_stock   = 0;
     $total_stock = $new_stock;
 
-    if($item_name == ""){
+    if ($item_name == "") {
         $error = "Item name is required!";
     } else {
 
-        // Image upload
+        /* IMAGE UPLOAD */
         $stock_image = "";
-        if(isset($_FILES['stock_image']['name']) && $_FILES['stock_image']['name'] != ""){
+        if (!empty($_FILES['stock_image']['name'])) {
             $imageName = time() . "_" . basename($_FILES['stock_image']['name']);
             $target = "../uploads/" . $imageName;
-            if(move_uploaded_file($_FILES['stock_image']['tmp_name'], $target)){
+            if (move_uploaded_file($_FILES['stock_image']['tmp_name'], $target)) {
                 $stock_image = $imageName;
             }
         }
 
-        // Insert
-        $query = "
+        $sql = "
             INSERT INTO stock (
                 item_name, brand, model, stock_image,
                 old_stock, new_stock, total_stock, min_quantity,
@@ -53,209 +52,237 @@ if($_SERVER['REQUEST_METHOD'] == "POST"){
                 gst_percent, total_price, warranty_months,
                 created_at
             ) VALUES (
-                '$item_name', '$brand', '$model', '$stock_image',
-                '$old_stock', '$new_stock', '$total_stock', '$min_quantity',
-                '$purchase', '$actual_price', '$selling_price',
-                '$gst', '$total_price', '$warranty',
+                '$item_name','$brand','$model','$stock_image',
+                '$old_stock','$new_stock','$total_stock','$min_quantity',
+                '$purchase','$actual_price','$selling_price',
+                '$gst','$total_price','$warranty',
                 NOW()
             )
         ";
 
-        if(mysqli_query($conn, $query)){
-            $success = "Stock item added successfully!";
+        if (mysqli_query($conn, $sql)) {
+            header("Location: new.php?success=1");
+            exit();
         } else {
             $error = "Database Error: " . mysqli_error($conn);
         }
     }
 }
+
+if (isset($_GET['success'])) {
+    $success = "Stock created successfully!";
+}
 ?>
 <!DOCTYPE html>
 <html>
+
 <head>
-    <title>New Stock Item</title>
+    <title>Add New Stock</title>
     <link rel="stylesheet" href="../style.css">
 
     <style>
-        .modal{
-            display:none;position:fixed;left:0;top:0;width:100%;height:100%;
-            background:rgba(0,0,0,0.6);justify-content:center;align-items:center;
+        .form-grid {
+            display: grid;
+            gap: 15px
         }
-        .modal-content{
-            background:#fff;padding:20px;border-radius:8px;width:300px;
+
+        .grid-2 {
+            grid-template-columns: repeat(2, 1fr)
         }
-        .close-btn{float:right;font-weight:bold;color:red;cursor:pointer;}
+
+        .grid-3 {
+            grid-template-columns: repeat(3, 1fr)
+        }
+
+        .section-title {
+            margin: 25px 0 10px;
+            font-size: 18px;
+            font-weight: bold
+        }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, .5);
+            justify-content: center;
+            align-items: center
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px
+        }
+
+        .close {
+            float: right;
+            font-weight: bold;
+            cursor: pointer
+        }
     </style>
-
 </head>
+
 <body>
+    <?php include("../includes/header.php"); ?>
 
-<?php include("../includes/header.php"); ?>
+    <div class="container">
+        <div class="card">
 
-<div class="container">
-    <div class="card">
-        <h2>Add New Stock Item</h2>
+            <h2 align="center">Add New Stock Item</h2>
 
-        <?php if($success != ""): ?>
-            <p style="color:green;"><?php echo $success; ?></p>
-        <?php endif; ?>
+            <?php if ($success): ?>
+                <div class="alert-success">✅ <?= $success ?></div>
+            <?php endif; ?>
 
-        <?php if($error != ""): ?>
-            <p style="color:red;"><?php echo $error; ?></p>
-        <?php endif; ?>
+            <?php if ($error): ?>
+                <p style="color:red"><?= $error ?></p>
+            <?php endif; ?>
 
-        <form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data">
 
-            <h3>Stock Image</h3>
-            <input type="file" name="stock_image">
+                <div class="section-title">Stock Image</div>
+                <input type="file" name="stock_image">
 
-            <h3>Item Details</h3>
+                <div class="section-title">Item Details</div>
+                <div class="form-grid grid-3">
 
-            <label>Item Name *</label>
-            <input type="text" name="item_name" required>
+                    <div>
+                        <label>Item Name *</label>
+                        <input type="text" name="item_name" required>
+                    </div>
 
-            <label>Brand</label>
-            <select name="brand" id="brand">
-                <option value="">Select Brand</option>
-                <option>Usha</option>
-                <option>Jack</option>
-                <option>Singer</option>
-                <option>Brother</option>
-                <option>Other</option>
-            </select>
+                    <div>
+                        <label>Brand</label>
+                        <select name="brand" id="brand">
+                            <option value="">Select Brand</option>
+                            <option>Usha</option>
+                            <option>Jack</option>
+                            <option>Singer</option>
+                            <option>Brother</option>
+                        </select>
+                        <button type="button" class="btn" onclick="openBrand()">+ Add Brand</button>
+                    </div>
 
-            <button type="button" class="btn" onclick="openBrandModal()">+ Add New Brand</button>
+                    <div>
+                        <label>Model</label>
+                        <select name="model" id="model">
+                            <option value="">Select Model</option>
+                            <option>Zigzag</option>
+                            <option>Domestic</option>
+                            <option>Industrial</option>
+                        </select>
+                        <button type="button" class="btn" onclick="openModel()">+ Add Model</button>
+                    </div>
 
-            <br><br>
+                </div>
 
-            <label>Model</label>
-            <select name="model" id="model">
-                <option value="">Select Model</option>
-                <option>Zigzag</option>
-                <option>Straight Stitch</option>
-                <option>Domestic</option>
-                <option>Industrial</option>
-            </select>
+                <div class="section-title">Stock Quantities</div>
+                <div class="form-grid grid-3">
+                    <div><label>Old Stock</label><input value="0" disabled></div>
+                    <div><label>New Stock</label><input type="number" name="new_stock" id="new_stock" onkeyup="calcStock()" required></div>
+                    <div><label>Total Stock</label><input id="total_stock" disabled></div>
+                </div>
 
-            <button type="button" class="btn" onclick="openModelModal()">+ Add New Model</button>
+                <label>Reorder Level</label>
+                <input type="number" name="min_quantity" value="0">
 
+                <div class="section-title">Price Details</div>
+                <div class="form-grid grid-3">
+                    <div><label>Purchase Price</label><input type="number" step="0.01" name="purchase_price" id="purchase_price" onkeyup="calcTotal()" required></div>
+                    <div><label>Actual Price</label><input type="number" step="0.01" name="actual_price" id="actual_price"></div>
+                    <div><label>Selling Price</label><input type="number" step="0.01" name="selling_price" id="selling_price"></div>
+                </div>
 
-
-            <h3>Stock Quantities</h3>
-
-            <label>Old Stock (Auto = 0)</label>
-            <input type="number" value="0" disabled>
-
-            <label>New Stock *</label>
-            <input type="number" name="new_stock" id="new_stock" value="0" onkeyup="calcStock()" required>
-
-            <label>Total Stock</label>
-            <input type="number" id="total_stock" value="0" disabled>
-
-            <label>Reorder Level (Min Quantity)</label>
-            <input type="number" name="min_quantity" value="0">
-
-            <h3>Price Details</h3>
-
-            <label>Price Per Quantity *</label>
-            <input type="number" step="0.01" name="purchase_price" id="purchase_price" value="0" onkeyup="calcTotal()" required>
-
-            <label>Actual Price *</label>
-            <input type="number" step="0.01" name="actual_price" id="actual_price" value="0" onkeyup="calcTotal()" required>
-
-            <label>Selling Price *</label>
-            <input type="number" step="0.01" name="selling_price" id="selling_price" value="0" onkeyup="calcTotal()" required>
-
-            <label>GST %</label>
-            <input type="number" step="0.01" name="gst_percent" id="gst_percent" value="0" onkeyup="calcTotal()">
-
-            <label>Total Price</label>
-            <input type="number" step="0.01" name="total_price" id="total_price" readonly>
+                <div class="form-grid grid-3">
+                    <div><label>GST %</label><input type="number" step="0.01" name="gst_percent" id="gst_percent" onkeyup="calcTotal()"></div>
+                    <div><label>Total Price</label><input name="total_price" id="total_price" readonly></div>
+                    <div><label>Warranty (Months)</label><input type="number" name="warranty_months" value="0"></div>
+                </div>
 
 
-            <h3>Warranty</h3>
-            <label>Warranty in Months</label>
-            <input type="number" name="warranty_months" value="0">
+                <br>
+                <button class="btn btn-success">Save Stock</button>
+                <button class="btn btn-secondary" type="reset">Reset</button>
 
-
-            <br><br>
-            <button type="submit" class="btn">Submit</button>
-            <button type="reset" class="btn" style="background:#e74c3c;">Reset</button>
-
-        </form>
+            </form>
+        </div>
     </div>
-</div>
 
-
-<!-- BRAND MODAL -->
-<div class="modal" id="brandModal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="closeBrandModal()">X</span>
-        <h3>Add Brand</h3>
-        <input type="text" id="newBrand" placeholder="Brand Name">
-        <button class="btn" onclick="saveBrand()">Save</button>
+    <!-- BRAND MODAL -->
+    <div class="modal" id="brandModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeBrand()">X</span>
+            <h3>Add Brand</h3>
+            <input type="text" id="newBrand">
+            <button class="btn" onclick="saveBrand()">Save</button>
+        </div>
     </div>
-</div>
 
-<!-- MODEL MODAL -->
-<div class="modal" id="modelModal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="closeModelModal()">X</span>
-        <h3>Add Model</h3>
-        <input type="text" id="newModel" placeholder="Model Name">
-        <button class="btn" onclick="saveModel()">Save</button>
+    <!-- MODEL MODAL -->
+    <div class="modal" id="modelModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModel()">X</span>
+            <h3>Add Model</h3>
+            <input type="text" id="newModel">
+            <button class="btn" onclick="saveModel()">Save</button>
+        </div>
     </div>
-</div>
 
+    <script>
+        function calcStock() {
+            var n = document.getElementById('new_stock').value || 0;
+            document.getElementById('total_stock').value = n;
+        }
 
-<script>
-function calcStock(){
-    var newStock = parseInt(document.getElementById('new_stock').value) || 0;
-    document.getElementById('total_stock').value = newStock;
-}
+        function calcTotal() {
+            var p = parseFloat(purchase_price.value) || 0;
+            var g = parseFloat(gst_percent.value) || 0;
+            var q = parseInt(new_stock.value) || 0;
+            total_price.value = ((p + (p * g / 100)) * q).toFixed(2);
+        }
 
-function calcTotal(){
-    var purchase = parseFloat(document.getElementById('purchase_price').value) || 0;
-    var gst = parseFloat(document.getElementById('gst_percent').value) || 0;
-    var qty = parseInt(document.getElementById('new_stock').value) || 0;
+        function openBrand() {
+            brandModal.style.display = "flex";
+        }
 
-    var gstAmount = (purchase * gst) / 100;
-    var total = (purchase + gstAmount) * qty;
+        function closeBrand() {
+            brandModal.style.display = "none";
+        }
 
-    document.getElementById('total_price').value = total.toFixed(2);
-}
+        function saveBrand() {
+            var b = newBrand.value;
+            if (!b) return;
+            var o = new Option(b, b);
+            brand.add(o);
+            brand.value = b;
+            closeBrand();
+        }
 
-// BRAND MODAL
-function openBrandModal(){ document.getElementById('brandModal').style.display="flex"; }
-function closeBrandModal(){ document.getElementById('brandModal').style.display="none"; }
-function saveBrand(){
-    var newBrand = document.getElementById('newBrand').value;
-    if(newBrand == "") return;
-    var select = document.getElementById('brand');
-    var option = document.createElement("option");
-    option.text = newBrand;
-    option.value = newBrand;
-    select.add(option);
-    select.value = newBrand;
-    closeBrandModal();
-}
+        function openModel() {
+            modelModal.style.display = "flex";
+        }
 
-// MODEL MODAL
-function openModelModal(){ document.getElementById('modelModal').style.display="flex"; }
-function closeModelModal(){ document.getElementById('modelModal').style.display="none"; }
-function saveModel(){
-    var newModel = document.getElementById('newModel').value;
-    if(newModel == "") return;
-    var select = document.getElementById('model');
-    var option = document.createElement("option");
-    option.text = newModel;
-    option.value = newModel;
-    select.add(option);
-    select.value = newModel;
-    closeModelModal();
-}
-</script>
+        function closeModel() {
+            modelModal.style.display = "none";
+        }
 
-<?php include("../includes/footer.php"); ?>
+        function saveModel() {
+            var m = newModel.value;
+            if (!m) return;
+            var o = new Option(m, m);
+            model.add(o);
+            model.value = m;
+            closeModel();
+        }
+    </script>
 
+    <?php include("../includes/footer.php"); ?>
 </body>
+
 </html>

@@ -3,252 +3,313 @@ session_start();
 require_once("../config/db.php");
 require_once("../includes/functions.php");
 
-// Redirect if not logged in
-if(!isset($_SESSION['user_id'])){
-    redirect("../login/login.php");
+/* LOGIN CHECK */
+    // if (!isset($_SESSION['user_id'])) {
+    //     redirect("../login/login.php");
+    // }
+
+// /* ID CHECK */
+// if (!isset($_GET['id'])) {
+//     redirect("list.php");
+// }
+
+$id = intval($_GET['id']);
+
+/* FETCH STOCK DATA */
+$query = "SELECT * FROM stock WHERE id = $id LIMIT 1";
+$result = mysqli_query($conn, $query);
+
+if (mysqli_num_rows($result) == 0) {
+    redirect("list.php");
 }
 
+$data = mysqli_fetch_assoc($result);
+
 $success = "";
-$error = "";
+$error   = "";
 
-// INSERT ORDER
-if($_SERVER['REQUEST_METHOD'] == "POST"){
+/* ======================
+   UPDATE FORM SUBMIT
+====================== */
+if ($_SERVER['REQUEST_METHOD'] == "POST") {
 
-    $order_status = clean($_POST['order_status']);
-    $order_date   = clean($_POST['order_date']);
-    $customer_phone = clean($_POST['customer_phone']);
-    $customer_name  = clean($_POST['customer_name']);
-    $addr1 = clean($_POST['addr1']);
-    $addr2 = clean($_POST['addr2']);
-    $city  = clean($_POST['city']);
+    $item_name     = clean($_POST['item_name']);
+    $brand         = clean($_POST['brand']);
+    $model         = clean($_POST['model']);
+    $new_stock     = intval($_POST['new_stock']);
+    $min_quantity  = intval($_POST['min_quantity']);
 
-    // Totals
-    $total_amount = floatval($_POST['total_amount']);
-    $paid_amount  = floatval($_POST['paid_amount']);
-    $balance      = floatval($_POST['balance']);
+    $old_stock     = intval($data['total_stock']);
+    $total_stock   = $old_stock + $new_stock;
 
-    // Create main sales record
-    $sql = "
-        INSERT INTO sales (
-            order_status, order_date,
-            customer_phone, customer_name, addr1, addr2, city,
-            total_amount, paid_amount, balance,
-            created_at
-        ) VALUES (
-            '$order_status', '$order_date',
-            '$customer_phone', '$customer_name', '$addr1', '$addr2', '$city',
-            '$total_amount', '$paid_amount', '$balance',
-            NOW()
-        )
-    ";
+    $purchase      = floatval($_POST['purchase_price']);
+    $actual_price  = floatval($_POST['actual_price']);
+    $selling_price = floatval($_POST['selling_price']);
+    $gst           = floatval($_POST['gst_percent']);
+    $total_price   = floatval($_POST['total_price']);
+    $warranty      = intval($_POST['warranty_months']);
 
-    if(mysqli_query($conn, $sql)){
-        $sale_id = mysqli_insert_id($conn);
+    if ($item_name == "") {
+        $error = "Item name is required!";
+    } else {
 
-        // Insert each item row
-        foreach($_POST['item'] as $i => $item_name){
+        /* IMAGE UPLOAD */
+        $stock_image = $data['stock_image'];
 
-            if(trim($item_name) == "") continue;
+        if (!empty($_FILES['stock_image']['name'])) {
+            $imageName = time() . "_" . basename($_FILES['stock_image']['name']);
+            $target = "../uploads/" . $imageName;
 
-            $part = clean($_POST['part'][$i]);
-            $qty  = floatval($_POST['qty'][$i]);
-            $price = floatval($_POST['price'][$i]);
-            $gst   = floatval($_POST['gst'][$i]);
-            $tprice = floatval($_POST['tprice'][$i]);
-
-            // Image upload
-            $item_img = "";
-            if(isset($_FILES['item_img']['name'][$i]) && $_FILES['item_img']['name'][$i] != ""){
-                $imgName = time()."_".basename($_FILES['item_img']['name'][$i]);
-                $path = "../uploads/".$imgName;
-                if(move_uploaded_file($_FILES['item_img']['tmp_name'][$i], $path)){
-                    $item_img = $imgName;
-                }
+            if (move_uploaded_file($_FILES['stock_image']['tmp_name'], $target)) {
+                $stock_image = $imageName;
             }
-
-            mysqli_query($conn, "
-                INSERT INTO sales_items (
-                    sale_id, item_name, part_no, qty,
-                    price_per_qty, gst_percent, total_price,
-                    item_image
-                ) VALUES (
-                    '$sale_id', '$item_name', '$part', '$qty',
-                    '$price', '$gst', '$tprice',
-                    '$item_img'
-                )
-            ");
         }
 
-        $success = "Sales order created successfully!";
-    } else {
-        $error = "Error saving order!";
+        /* UPDATE QUERY */
+        $update = "
+            UPDATE stock SET
+                item_name = '$item_name',
+                brand = '$brand',
+                model = '$model',
+                stock_image = '$stock_image',
+                old_stock = '$old_stock',
+                new_stock = '$new_stock',
+                total_stock = '$total_stock',
+                min_quantity = '$min_quantity',
+                purchase_price = '$purchase',
+                actual_price = '$actual_price',
+                selling_price = '$selling_price',
+                gst_percent = '$gst',
+                total_price = '$total_price',
+                warranty_months = '$warranty'
+            WHERE id = $id
+        ";
+
+        if (mysqli_query($conn, $update)) {
+            $success = "Stock updated successfully!";
+
+            /* REFRESH DATA */
+            $result = mysqli_query($conn, $query);
+            $data = mysqli_fetch_assoc($result);
+        } else {
+            $error = "Database error: " . mysqli_error($conn);
+        }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html>
+
 <head>
-    <title>Create Sales Order</title>
+    <title>Edit Stock</title>
     <link rel="stylesheet" href="../style.css">
 
     <style>
-        .item-row{border:1px solid #ddd;padding:10px;margin-bottom:10px;border-radius:5px;}
-        .delete-btn{background:#e74c3c;color:#fff;padding:5px 10px;border-radius:4px;cursor:pointer;}
-        .add-btn{background:#2ecc71;color:#fff;padding:7px 15px;border-radius:4px;cursor:pointer;}
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+        }
+
+        .close-btn {
+            float: right;
+            font-weight: bold;
+            color: red;
+            cursor: pointer;
+        }
     </style>
 </head>
+
 <body>
+    <?php include("../includes/header.php"); ?>
 
-<?php include("../includes/header.php"); ?>
+    <div class="container">
+        <div class="card">
 
-<div class="container">
-    <div class="card">
-        <h2>Create Sales Order</h2>
+            <h2>Edit Stock Item</h2>
 
-        <?php if($success!=""){ echo "<p style='color:green;'>$success</p>"; } ?>
-        <?php if($error!=""){ echo "<p style='color:red;'>$error</p>"; } ?>
+            <?php if ($success): ?>
+                <div class="alert-success">✅ <?= $success ?></div>
+            <?php endif; ?>
 
-        <form method="POST" enctype="multipart/form-data">
+            <?php if ($error): ?>
+                <p style="color:red"><?= $error ?></p>
+            <?php endif; ?>
 
-            <h3>Order Info</h3>
+            <form method="POST" enctype="multipart/form-data">
 
-            <label>Order Status</label>
-            <select name="order_status">
-                <option value="New">New</option>
-                <option value="Invoice">Invoice</option>
-            </select>
+                <h3>Current Image</h3>
+                <?php if ($data['stock_image']): ?>
+                    <img src="../uploads/<?= $data['stock_image'] ?>" width="100">
+                <?php else: ?>
+                    No Image
+                <?php endif; ?>
 
-            <label>Order Date</label>
-            <input type="date" name="order_date" value="<?php echo date('Y-m-d'); ?>">
+                <br><br>
+                <label>Change Image</label>
+                <input type="file" name="stock_image">
 
-            <h3>Customer Information</h3>
+                <h3>Item Details</h3>
 
-            <label>Phone Number</label>
-            <input type="text" name="customer_phone">
+                <label>Item Name *</label>
+                <input type="text" name="item_name" value="<?= $data['item_name'] ?>" required>
 
-            <label>Customer Name</label>
-            <input type="text" name="customer_name">
+                <label>Brand</label>
+                <select name="brand" id="brand">
+                    <option value="">Select</option>
+                    <?php
+                    $brands = array("Usha", "Jack", "Singer", "Brother");
+                    foreach ($brands as $b) {
+                        $sel = ($data['brand'] == $b) ? "selected" : "";
+                        echo "<option $sel>$b</option>";
+                    }
+                    ?>
+                </select>
+                <button type="button" class="btn" onclick="openBrandModal()">+ Add Brand</button>
 
-            <label>Address Line 1</label>
-            <input type="text" name="addr1">
+                <label>Model</label>
+                <select name="model" id="model">
+                    <option value="">Select</option>
+                    <?php
+                    $models = array("Zigzag", "Domestic", "Industrial", "Straight Stitch");
+                    foreach ($models as $m) {
+                        $sel = ($data['model'] == $m) ? "selected" : "";
+                        echo "<option $sel>$m</option>";
+                    }
+                    ?>
+                </select>
+                <button type="button" class="btn" onclick="openModelModal()">+ Add Model</button>
 
-            <label>Address Line 2</label>
-            <input type="text" name="addr2">
+                <h3>Stock</h3>
 
-            <label>City</label>
-            <input type="text" name="city">
+                <label>Old Stock</label>
+                <input value="<?= $data['total_stock'] ?>" disabled>
 
-            <br><br>
-            <h3>Sales Items</h3>
+                <label>Add New Stock</label>
+                <input type="number" name="new_stock" id="new_stock" value="0" onkeyup="calcStock()">
 
-            <div id="items-container">
+                <label>Total Stock</label>
+                <input id="total_stock" value="<?= $data['total_stock'] ?>" disabled>
 
-                <div class="item-row">
+                <label>Reorder Level</label>
+                <input type="number" name="min_quantity" value="<?= $data['min_quantity'] ?>">
 
-                    <label>Image</label>
-                    <input type="file" name="item_img[]">
+                <h3>Price Details</h3>
 
-                    <label>Item Name</label>
-                    <input type="text" name="item[]" required>
+                <label>Purchase Price</label>
+                <input type="number" step="0.01" name="purchase_price" id="purchase_price"
+                    value="<?= $data['purchase_price'] ?>" onkeyup="calcTotal()">
 
-                    <label>Part/Serial No.</label>
-                    <input type="text" name="part[]">
+                <label>Actual Price</label>
+                <input type="number" step="0.01" name="actual_price"
+                    value="<?= $data['actual_price'] ?>">
 
-                    <label>Quantity</label>
-                    <input type="number" step="0.01" name="qty[]" onkeyup="calcRow(this)" value="1">
+                <label>Selling Price</label>
+                <input type="number" step="0.01" name="selling_price"
+                    value="<?= $data['selling_price'] ?>">
 
-                    <label>Price / Qty</label>
-                    <input type="number" step="0.01" name="price[]" onkeyup="calcRow(this)" value="0">
+                <label>GST %</label>
+                <input type="number" step="0.01" name="gst_percent" id="gst_percent"
+                    value="<?= $data['gst_percent'] ?>" onkeyup="calcTotal()">
 
-                    <label>GST %</label>
-                    <input type="number" step="0.01" name="gst[]" onkeyup="calcRow(this)" value="0">
+                <label>Total Price</label>
+                <input type="number" step="0.01" name="total_price" id="total_price"
+                    value="<?= $data['total_price'] ?>" readonly>
 
-                    <label>Total Price</label>
-                    <input type="number" step="0.01" name="tprice[]" class="row-total" readonly>
+                <label>Warranty (Months)</label>
+                <input type="number" name="warranty_months"
+                    value="<?= $data['warranty_months'] ?>">
 
-                    <br>
-                    <span class="delete-btn" onclick="deleteRow(this)">Delete</span>
-                </div>
+                <br><br>
+                <button class="btn">Update Stock</button>
+                <a href="list.php" class="btn" style="background:#7f8c8d">Back</a>
 
-            </div>
-
-            <br>
-            <span class="add-btn" onclick="addItem()">+ Add New Item</span>
-
-            <br><br>
-            <h3>Payment Details</h3>
-
-            <label>Total Amount</label>
-            <input type="number" step="0.01" name="total_amount" id="total_amount" readonly>
-
-            <label>Paid Amount</label>
-            <input type="number" step="0.01" name="paid_amount" id="paid_amount" onkeyup="updateBalance()">
-
-            <label>Balance</label>
-            <input type="number" step="0.01" name="balance" id="balance" readonly>
-
-            <br><br>
-            <button type="submit" class="btn">Submit Order</button>
-        </form>
-
+            </form>
+        </div>
     </div>
-</div>
 
-<?php include("../includes/footer.php"); ?>
+    <!-- BRAND MODAL -->
+    <div class="modal" id="brandModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeBrandModal()">X</span>
+            <h3>Add Brand</h3>
+            <input type="text" id="newBrand">
+            <button class="btn" onclick="saveBrand()">Save</button>
+        </div>
+    </div>
 
-<script>
-function calcRow(input){
-    var row = input.parentNode;
-    var qty = parseFloat(row.querySelector("input[name='qty[]']").value) || 0;
-    var price = parseFloat(row.querySelector("input[name='price[]']").value) || 0;
-    var gst = parseFloat(row.querySelector("input[name='gst[]']").value) || 0;
+    <!-- MODEL MODAL -->
+    <div class="modal" id="modelModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModelModal()">X</span>
+            <h3>Add Model</h3>
+            <input type="text" id="newModel">
+            <button class="btn" onclick="saveModel()">Save</button>
+        </div>
+    </div>
 
-    var gstAmt = (price * gst) / 100;
-    var total = (price + gstAmt) * qty;
-
-    row.querySelector("input[name='tprice[]']").value = total.toFixed(2);
-
-    calcTotalAmount();
-}
-
-function calcTotalAmount(){
-    var totals = document.querySelectorAll(".row-total");
-    var sum = 0;
-    for(var i=0;i<totals.length;i++){
-        sum += parseFloat(totals[i].value) || 0;
-    }
-    document.getElementById('total_amount').value = sum.toFixed(2);
-    updateBalance();
-}
-
-function updateBalance(){
-    var total = parseFloat(document.getElementById('total_amount').value) || 0;
-    var paid  = parseFloat(document.getElementById('paid_amount').value) || 0;
-    document.getElementById('balance').value = (total - paid).toFixed(2);
-}
-
-function deleteRow(btn){
-    var row = btn.parentNode;
-    row.remove();
-    calcTotalAmount();
-}
-
-function addItem(){
-    var container = document.getElementById('items-container');
-    var clone = container.children[0].cloneNode(true);
-
-    // Reset fields
-    clone.querySelectorAll("input").forEach(function(input){
-        if(input.type=="file"){
-            input.value = "";
-        } else {
-            input.value = "";
+    <script>
+        function calcStock() {
+            var oldStock = <?= $data['total_stock'] ?>;
+            var newStock = parseInt(new_stock.value) || 0;
+            total_stock.value = oldStock + newStock;
         }
-    });
 
-    container.appendChild(clone);
-}
-</script>
+        function calcTotal() {
+            var p = parseFloat(purchase_price.value) || 0;
+            var g = parseFloat(gst_percent.value) || 0;
+            var q = parseInt(new_stock.value) || 0;
+            total_price.value = ((p + (p * g / 100)) * q).toFixed(2);
+        }
 
+        function openBrandModal() {
+            brandModal.style.display = "flex";
+        }
+
+        function closeBrandModal() {
+            brandModal.style.display = "none";
+        }
+
+        function saveBrand() {
+            var b = newBrand.value;
+            if (!b) return;
+            brand.add(new Option(b, b));
+            brand.value = b;
+            closeBrandModal();
+        }
+
+        function openModelModal() {
+            modelModal.style.display = "flex";
+        }
+
+        function closeModelModal() {
+            modelModal.style.display = "none";
+        }
+
+        function saveModel() {
+            var m = newModel.value;
+            if (!m) return;
+            model.add(new Option(m, m));
+            model.value = m;
+            closeModelModal();
+        }
+    </script>
+
+    <?php include("../includes/footer.php"); ?>
 </body>
+
 </html>

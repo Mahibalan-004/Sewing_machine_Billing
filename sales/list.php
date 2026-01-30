@@ -4,9 +4,9 @@ require_once("../config/db.php");
 require_once("../includes/functions.php");
 
 // Require login
-if(!isset($_SESSION['user_id'])){
-    redirect("../login/login.php");
-}
+// if(!isset($_SESSION['user_id'])){
+//     redirect("../login/login.php");
+// }
 
 // Fetch all sales orders
 $query = "

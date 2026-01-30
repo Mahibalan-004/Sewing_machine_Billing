@@ -36,7 +36,7 @@ if (!isset($_SESSION['user_id'])) {
         <li class="menu-item has-dropdown">
             <a href="#" class="menu-link">Sales</a>
             <div class="dropdown">
-                <a href="../sales/create.php">Create Sale</a>
+                <a href="../sales/create.php">Create Sales</a>
                 <a href="../sales/list.php">Sales List</a>
             </div>
         </li>

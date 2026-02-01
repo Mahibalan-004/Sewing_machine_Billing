@@ -24,19 +24,11 @@ $low_stock_q = mysqli_query($conn,
 );
 $low_stock = mysqli_fetch_assoc($low_stock_q)['total'];
 
-// PENDING OUTINGS (expected_return date not empty and still pending)
-$pending_outings_q = mysqli_query($conn,
-    "SELECT COUNT(*) AS total FROM outing WHERE expected_return IS NOT NULL AND expected_return != '' AND expected_return >= CURDATE()"
-);
-$pending_outings = mysqli_fetch_assoc($pending_outings_q)['total'];
 
 // TOTAL JOBCARDS
 $jobcard_q = mysqli_query($conn, "SELECT COUNT(*) AS total FROM jobcards");
 $total_jobcards = mysqli_fetch_assoc($jobcard_q)['total'];
 
-// TOTAL EMPLOYEES
-$employee_q = mysqli_query($conn, "SELECT COUNT(*) AS total FROM employees");
-$total_employees = mysqli_fetch_assoc($employee_q)['total'];
 
 ?>
 <!DOCTYPE html>
@@ -80,21 +72,11 @@ $total_employees = mysqli_fetch_assoc($employee_q)['total'];
             <div class="card-value"><?php echo $low_stock; ?></div>
         </div>
 
-        <div class="card-box">
-            <div class="card-title">Pending Outings</div>
-            <div class="card-value"><?php echo $pending_outings; ?></div>
-        </div>
 
         <div class="card-box">
             <div class="card-title">Total Jobcards</div>
             <div class="card-value"><?php echo $total_jobcards; ?></div>
         </div>
-
-        <div class="card-box">
-            <div class="card-title">Total Employees</div>
-            <div class="card-value"><?php echo $total_employees; ?></div>
-        </div>
-
     </div>
 </div>
 

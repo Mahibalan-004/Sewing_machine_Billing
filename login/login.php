@@ -5,7 +5,7 @@ require_once("../includes/functions.php");
 
 // If already logged in
 if(isset($_SESSION['user_id'])){
-    redirect("../dashboard.php");
+    redirect("../login/login.php");
 }
 
 $error = "";
@@ -20,7 +20,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST"){
     } 
     else {
 
-        $sql = "SELECT id, username, password, role FROM users WHERE username='$username'";
+        $sql = "SELECT id, username, password FROM users WHERE username='$username'";
         $result = mysqli_query($conn, $sql);
 
         if(mysqli_num_rows($result) == 1){
@@ -31,8 +31,6 @@ if($_SERVER['REQUEST_METHOD'] == "POST"){
 
                 $_SESSION['user_id'] = $row['id'];
                 $_SESSION['username'] = $row['username'];
-                $_SESSION['role'] = $row['role'];
-
                 // SUCCESS MESSAGE
                 $success = "Login successful! Redirecting to Dashboard...";
                 echo "<script>
@@ -45,9 +43,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST"){
                 $error = "❌ Wrong Password!";
             }
         } 
-        else {
-            $error = "❌ User Not Found!";
-        }
+
     }
 }
 ?>

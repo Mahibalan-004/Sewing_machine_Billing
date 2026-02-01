@@ -1,31 +1,3 @@
-CREATE TABLE jobcards (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    jobcard_no VARCHAR(50),
-    jobcard_date DATE,
-    customer_phone VARCHAR(20),
-    customer_name VARCHAR(100),
-    customer_city VARCHAR(100),
-    machine_image VARCHAR(200),
-    machine_name VARCHAR(150),
-    serial_number VARCHAR(150),
-    work_type VARCHAR(100),
-    remarks TEXT,
-    created_at DATETIME
-);
-
-ALTER TABLE jobcards
-ADD COLUMN job_status VARCHAR(30) DEFAULT 'New Job' AFTER jobcard_date;
-
-ALTER TABLE jobcards
-ADD COLUMN paid_amount DECIMAL(10,2) DEFAULT 0 AFTER job_status;
-
-
-
-
-ALTER TABLE jobcards
-ADD job_status VARCHAR(30) DEFAULT 'New Job' AFTER jobcard_date,
-ADD paid_amount DECIMAL(10,2) DEFAULT 0 AFTER job_status;
-
 
 
 CREATE TABLE jobcard_items (
@@ -65,7 +37,7 @@ CREATE TABLE jobcards (
     serial_number VARCHAR(150),
     work_type VARCHAR(100),
     remarks TEXT,
-    created_at DATETIME
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 
@@ -85,7 +57,7 @@ CREATE TABLE stock (
     gst_percent DECIMAL(5,2),
     total_price DECIMAL(10,2),
     warranty_months INT,
-    created_at DATETIME
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE sales (
@@ -100,9 +72,8 @@ CREATE TABLE sales (
     total_amount DECIMAL(10,2),
     paid_amount DECIMAL(10,2),
     balance DECIMAL(10,2),
-    created_at DATETIME,
-    INDEX (customer_id)
-) ENGINE=InnoDB;
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
 
 CREATE TABLE sales_items (
@@ -114,9 +85,8 @@ CREATE TABLE sales_items (
     total_price DECIMAL(10,2),
     CONSTRAINT fk_sales_items_sale
         FOREIGN KEY (sale_id) REFERENCES sales(id)
-        ON DELETE CASCADE,
-    INDEX (stock_id)
-) ENGINE=InnoDB;
+        ON DELETE CASCADE
+);
 
 CREATE TABLE suppliers (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -150,3 +120,24 @@ CREATE TABLE purchases (
     paid_amount DECIMAL(10,2),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE customers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    phone VARCHAR(15) UNIQUE,
+    name VARCHAR(100),
+    addr1 VARCHAR(255),
+    addr2 VARCHAR(255),
+    city VARCHAR(100),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50),
+    password VARCHAR(100),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Default admin login
+INSERT INTO users (username, password, created_at)
+VALUES ('admin', 'admin123', NOW());

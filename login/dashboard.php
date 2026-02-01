@@ -9,7 +9,7 @@ if(!isset($_SESSION['user_id'])){
 
 // SALES TODAY
 $sales_today_q = mysqli_query($conn,
-    "SELECT SUM(total_amount) AS total FROM sales WHERE order_date = CURDATE()"
+    "SELECT SUM(total_amount) AS total FROM sales WHERE sales_date = CURDATE()"
 );
 $sales_today = mysqli_fetch_assoc($sales_today_q)['total'];
 if($sales_today == "") $sales_today = 0;

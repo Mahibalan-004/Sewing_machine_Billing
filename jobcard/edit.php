@@ -3,164 +3,290 @@ session_start();
 require_once("../config/db.php");
 require_once("../includes/functions.php");
 
-// Login check
-if(!isset($_SESSION['user_id'])){
+if (!isset($_SESSION['user_id'])) {
     redirect("../login/login.php");
 }
 
-// Get jobcard ID
-if(!isset($_GET['id'])){
+if (!isset($_GET['id'])) {
     redirect("list.php");
 }
 
 $id = intval($_GET['id']);
 
-// Fetch existing jobcard
-$query = "SELECT * FROM jobcards WHERE id=$id LIMIT 1";
-$result = mysqli_query($conn, $query);
+/* ================= FETCH DATA ================= */
 
-if(mysqli_num_rows($result) == 0){
+$jobRes = mysqli_query($conn, "SELECT * FROM jobcards WHERE id=$id");
+$data   = mysqli_fetch_assoc($jobRes);
+
+if (!$data) {
     redirect("list.php");
 }
 
-$data = mysqli_fetch_assoc($result);
+$stockRes = mysqli_query($conn, "SELECT * FROM stock ORDER BY item_name");
+$itemRes  = mysqli_query($conn, "SELECT * FROM jobcard_items WHERE jobcard_id=$id");
+$labRes   = mysqli_query($conn, "SELECT * FROM jobcard_labour WHERE jobcard_id=$id");
 
-$success = "";
-$error = "";
+/* ================= TOTALS ================= */
 
-// When form submitted
-if($_SERVER['REQUEST_METHOD'] == "POST"){
+$spareTotal = mysqli_fetch_assoc(mysqli_query(
+    $conn,
+    "SELECT SUM(total_amount) AS t FROM jobcard_items WHERE jobcard_id=$id"
+))['t'] ?? 0;
 
-    $customer_phone = clean($_POST['customer_phone']);
-    $customer_name  = clean($_POST['customer_name']);
-    $customer_city  = clean($_POST['customer_city']);
-    $machine_name   = clean($_POST['machine_name']);
-    $serial_number  = clean($_POST['serial_number']);
-    $work_type      = clean($_POST['work_type']);
-    $remarks        = clean($_POST['remarks']);
+$labourTotal = mysqli_fetch_assoc(mysqli_query(
+    $conn,
+    "SELECT SUM(labour_cost) AS t FROM jobcard_labour WHERE jobcard_id=$id"
+))['t'] ?? 0;
 
-    if($customer_phone == "" || $customer_name == ""){
-        $error = "Phone number and customer name are required.";
-    } else {
+$grandTotal = $spareTotal + $labourTotal;
 
-        // Handle image update
-        $machine_image = $data['machine_image']; // keep old image
+/* ================= UPDATE JOB STATUS & PAYMENT ================= */
 
-        if(isset($_FILES['machine_image']['name']) && $_FILES['machine_image']['name'] != ""){
-            $imageName = time() . "_" . basename($_FILES['machine_image']['name']);
-            $targetPath = "../uploads/" . $imageName;
+if (isset($_POST['update_jobcard'])) {
 
-            if(move_uploaded_file($_FILES['machine_image']['tmp_name'], $targetPath)){
-                $machine_image = $imageName;
-            }
-        }
+    $job_status  = clean($_POST['job_status']);
+    $paid_amount = floatval($_POST['paid_amount']);
 
-        // Update DB
-        $updateQuery = "
-            UPDATE jobcards SET
-                customer_phone = '$customer_phone',
-                customer_name  = '$customer_name',
-                customer_city  = '$customer_city',
-                machine_image  = '$machine_image',
-                machine_name   = '$machine_name',
-                serial_number  = '$serial_number',
-                work_type      = '$work_type',
-                remarks        = '$remarks'
-            WHERE id = $id
-        ";
+    mysqli_query($conn, "
+        UPDATE jobcards SET
+            job_status='$job_status',
+            paid_amount='$paid_amount'
+        WHERE id=$id
+    ");
 
-        if(mysqli_query($conn, $updateQuery)){
-            $success = "Jobcard updated successfully!";
-            // Refresh data
-            $result = mysqli_query($conn, $query);
-            $data = mysqli_fetch_assoc($result);
-        } else {
-            $error = "Error updating record!";
-        }
-    }
+    redirect("edit.php?id=$id");
 }
 
+/* ================= ADD SPARE ================= */
+
+if (isset($_POST['add_spare'])) {
+
+    $stock_id = intval($_POST['stock_id']);
+    $qty      = intval($_POST['qty']);
+
+    $s = mysqli_query($conn, "SELECT * FROM stock WHERE id=$stock_id");
+    $stock = mysqli_fetch_assoc($s);
+
+    if ($qty > 0 && $qty <= $stock['total_stock']) {
+
+        $price = $stock['selling_price'];
+        $total = $price * $qty;
+
+        mysqli_query($conn, "
+            INSERT INTO jobcard_items
+            (jobcard_id, jobcard_no, stock_id, item_name, qty, price, total_amount)
+            VALUES
+            ('$id','{$data['jobcard_no']}','$stock_id',
+             '{$stock['item_name']}','$qty','$price','$total')
+        ");
+
+        mysqli_query($conn, "
+            UPDATE stock
+            SET total_stock = total_stock - $qty
+            WHERE id=$stock_id
+        ");
+    }
+
+    redirect("edit.php?id=$id");
+}
+
+/* ================= DELETE SPARE ================= */
+
+if (isset($_GET['del_spare'])) {
+
+    $sid = intval($_GET['del_spare']);
+
+    $r = mysqli_query($conn, "SELECT * FROM jobcard_items WHERE id=$sid");
+    $sp = mysqli_fetch_assoc($r);
+
+    mysqli_query($conn, "
+        UPDATE stock
+        SET total_stock = total_stock + {$sp['qty']}
+        WHERE id={$sp['stock_id']}
+    ");
+
+    mysqli_query($conn, "DELETE FROM jobcard_items WHERE id=$sid");
+
+    redirect("edit.php?id=$id");
+}
+
+/* ================= ADD LABOUR ================= */
+
+if (isset($_POST['add_labour'])) {
+
+    $labour_name = clean($_POST['labour_name']);
+    $labour_cost = floatval($_POST['labour_cost']);
+
+    mysqli_query($conn, "
+        INSERT INTO jobcard_labour
+        (jobcard_id, jobcard_no, labour_name, labour_cost)
+        VALUES
+        ('$id','{$data['jobcard_no']}','$labour_name','$labour_cost')
+    ");
+
+    redirect("edit.php?id=$id");
+}
 ?>
+
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Edit Jobcard</title>
     <link rel="stylesheet" href="../style.css">
+    <style>
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px
+        }
+
+        .readonly {
+            background: #f3f3f3
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 8px
+        }
+    </style>
 </head>
+
 <body>
+    <?php include("../includes/header.php"); ?>
 
-<?php include("../includes/header.php"); ?>
+    <div class="container">
+        <div class="card">
 
-<div class="container">
-    <div class="card">
-        <h2>Edit Jobcard</h2>
+            <h2>Edit Jobcard</h2>
 
-        <?php if($success != ""): ?>
-            <p style="color:green;"><?php echo $success; ?></p>
-        <?php endif; ?>
-
-        <?php if($error != ""): ?>
-            <p style="color:red;"><?php echo $error; ?></p>
-        <?php endif; ?>
-
-        <form method="POST" enctype="multipart/form-data">
-
+            <!-- ================= JOB INFO ================= -->
             <h3>Jobcard Info</h3>
+            <div class="grid-2">
+                <input value="<?= $data['jobcard_no'] ?>" readonly class="readonly">
+                <input value="<?= $data['jobcard_date'] ?>" readonly class="readonly">
+            </div>
 
-            <label>Jobcard Number</label>
-            <input type="text" value="<?php echo $data['jobcard_no']; ?>" disabled>
+            <!-- ================= CUSTOMER ================= -->
+            <h3>Customer Info</h3>
+            <div class="grid">
+                <input value="<?= $data['customer_phone'] ?>" readonly class="readonly">
+                <input value="<?= $data['customer_name'] ?>" readonly class="readonly">
+                <input value="<?= $data['customer_city'] ?>" readonly class="readonly">
+            </div>
 
-            <label>Date</label>
-            <input type="text" value="<?php echo $data['jobcard_date']; ?>" disabled>
+            <!-- ================= MACHINE ================= -->
+            <h3>Machine & Work</h3>
+            <div class="grid">
+                <input value="<?= $data['machine_name'] ?>" readonly class="readonly">
+                <input value="<?= $data['serial_number'] ?>" readonly class="readonly">
+                <input value="<?= $data['work_type'] ?>" readonly class="readonly">
+            </div>
 
+            <textarea readonly class="readonly"><?= $data['remarks'] ?></textarea>
 
-            <h3>Customer Information</h3>
+            <hr>
 
-            <label>Phone Number *</label>
-            <input type="text" name="customer_phone" value="<?php echo $data['customer_phone']; ?>" required>
+            <!-- ================= STATUS & PAYMENT ================= -->
+            <form method="POST">
 
-            <label>Customer Name *</label>
-            <input type="text" name="customer_name" value="<?php echo $data['customer_name']; ?>" required>
+                <h3>Job Status</h3>
+                <select name="job_status" required>
+                    <option <?= $data['job_status'] == "New Job" ? "selected" : "" ?>>New Job</option>
+                    <option <?= $data['job_status'] == "In Progress" ? "selected" : "" ?>>In Progress</option>
+                    <option <?= $data['job_status'] == "Completed" ? "selected" : "" ?>>Completed</option>
+                    <option <?= $data['job_status'] == "Delivered" ? "selected" : "" ?>>Delivered</option>
+                </select>
 
-            <label>City</label>
-            <input type="text" name="customer_city" value="<?php echo $data['customer_city']; ?>">
+                <h3>Payment</h3>
+                <input type="number" step="0.01" name="paid_amount"
+                    value="<?= $data['paid_amount'] ?>" required>
 
+                <h3>Grand Total</h3>
+                <input value="₹<?= number_format($grandTotal, 2) ?>" readonly class="readonly">
 
-            <h3>Machine & Work Details</h3>
+                <br><br>
+                <button class="btn" name="update_jobcard">Update Jobcard</button>
 
-            <label>Current Machine Image</label><br>
-            <?php if($data['machine_image'] != "") { ?>
-                <img src="../uploads/<?php echo $data['machine_image']; ?>" width="100" height="100">
-            <?php } else { echo "No Image"; } ?>
-            <br><br>
+            </form>
 
-            <label>Change Image (optional)</label>
-            <input type="file" name="machine_image">
+            <hr>
 
-            <label>Machine Name</label>
-            <input type="text" name="machine_name" value="<?php echo $data['machine_name']; ?>">
+            <!-- ================= SPARES ================= -->
+            <h3>Spares</h3>
+            <form method="POST" class="grid">
+                <select name="stock_id" required>
+                    <option value="">Select Spare</option>
+                    <?php while ($s = mysqli_fetch_assoc($stockRes)): ?>
+                        <option value="<?= $s['id'] ?>"><?= $s['item_name'] ?> (<?= $s['total_stock'] ?>)</option>
+                    <?php endwhile; ?>
+                </select>
 
-            <label>Serial Number</label>
-            <input type="text" name="serial_number" value="<?php echo $data['serial_number']; ?>">
+                <input type="number" name="qty" min="1" required>
+                <button class="btn" name="add_spare">Add Spare</button>
+            </form>
 
-            <label>Work Type</label>
-            <select name="work_type">
-                <option value="Service" <?php if($data['work_type']=="Service") echo "selected"; ?>>Service</option>
-                <option value="Total Checkup" <?php if($data['work_type']=="Total Checkup") echo "selected"; ?>>Total Checkup</option>
-                <option value="Free Service" <?php if($data['work_type']=="Free Service") echo "selected"; ?>>Free Service</option>
-            </select>
+            <table>
+                <tr>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                    <th></th>
+                </tr>
+                <?php while ($i = mysqli_fetch_assoc($itemRes)): ?>
+                    <tr>
+                        <td><?= $i['item_name'] ?></td>
+                        <td><?= $i['qty'] ?></td>
+                        <td><?= number_format($i['price'], 2) ?></td>
+                        <td><?= number_format($i['total_amount'], 2) ?></td>
+                        <td><a class="btn" href="?id=<?= $id ?>&del_spare=<?= $i['id'] ?>">Delete</a></td>
+                    </tr>
+                <?php endwhile; ?>
+            </table>
 
-            <label>Remarks</label>
-            <textarea name="remarks"><?php echo $data['remarks']; ?></textarea>
+            <hr>
 
-            <br><br>
-            <button type="submit" class="btn">Update Jobcard</button>
-        </form>
+            <!-- ================= LABOUR ================= -->
+            <h3>Labour</h3>
+            <form method="POST" class="grid">
+                <input name="labour_name" required>
+                <input type="number" step="0.01" name="labour_cost" required>
+                <button class="btn" name="add_labour">Add Labour</button>
+            </form>
 
+            <table>
+                <tr>
+                    <th>Work</th>
+                    <th>Cost</th>
+                </tr>
+                <?php while ($l = mysqli_fetch_assoc($labRes)): ?>
+                    <tr>
+                        <td><?= $l['labour_name'] ?></td>
+                        <td><?= number_format($l['labour_cost'], 2) ?></td>
+                    </tr>
+                <?php endwhile; ?>
+            </table>
+
+            <br>
+            <a href="list.php" class="btn" style="background:#7f8c8d">Back</a>
+
+        </div>
     </div>
-</div>
 
-<?php include("../includes/footer.php"); ?>
-
+    <?php include("../includes/footer.php"); ?>
 </body>
+
 </html>

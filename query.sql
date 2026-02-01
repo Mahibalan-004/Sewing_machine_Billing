@@ -195,3 +195,26 @@ CREATE TABLE sales_items (
 
     INDEX (stock_id)
 ) ENGINE=InnoDB;
+
+
+CREATE TABLE jobcard_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    jobcard_id INT NOT NULL,
+    jobcard_no VARCHAR(50),
+    stock_id INT,
+    item_name VARCHAR(150),
+    qty INT,
+    price DECIMAL(10,2),
+    total_amount DECIMAL(10,2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE jobcard_labour (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    jobcard_id INT,
+    jobcard_no VARCHAR(50),
+    labour_name VARCHAR(150),
+    labour_cost DECIMAL(10,2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

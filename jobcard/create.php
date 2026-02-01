@@ -3,152 +3,231 @@ session_start();
 require_once("../config/db.php");
 require_once("../includes/functions.php");
 
-// If not logged in → redirect
-// if(!isset($_SESSION['user_id'])){
-//     redirect("../login/login.php");
-// }
 
-// Auto-generate jobcard number
-$result = mysqli_query($conn, "SELECT id FROM jobcards ORDER BY id DESC LIMIT 1");
-$nextID = (mysqli_num_rows($result) > 0) ? mysqli_fetch_assoc($result)['id'] + 1 : 1;
+if (isset($_SESSION['success'])) {
+    $success = $_SESSION['success'];
+    unset($_SESSION['success']);
+}
+
+// Auto Jobcard Number
+$r = mysqli_query($conn, "SELECT id FROM jobcards ORDER BY id DESC LIMIT 1");
+$nextID = (mysqli_num_rows($r) > 0) ? mysqli_fetch_assoc($r)['id'] + 1 : 1;
 $jobcard_no = "JC-" . date("Y") . "-" . str_pad($nextID, 3, "0", STR_PAD_LEFT);
 
-$success = "";
-$error = "";
+$success = $error = "";
 
-// When form submitted
-if($_SERVER['REQUEST_METHOD'] == "POST"){
+/* FETCH CUSTOMERS */
+$customers = mysqli_query($conn, "SELECT * FROM customers ORDER BY phone");
+
+if ($_SERVER['REQUEST_METHOD'] == "POST") {
 
     $customer_phone = clean($_POST['customer_phone']);
     $customer_name  = clean($_POST['customer_name']);
     $customer_city  = clean($_POST['customer_city']);
-    $machine_name   = clean($_POST['machine_name']);
-    $serial_number  = clean($_POST['serial_number']);
-    $work_type      = clean($_POST['work_type']);
-    $remarks        = clean($_POST['remarks']);
 
-    // Validations
-    if($customer_phone == "" || $customer_name == ""){
-        $error = "Phone number and customer name are required.";
+    $machine_name  = clean($_POST['machine_name']);
+    $serial_number = clean($_POST['serial_number']);
+    $work_type     = clean($_POST['work_type']);
+    $remarks       = clean($_POST['remarks']);
+
+    if ($customer_phone == "" || $customer_name == "") {
+        $error = "Customer phone & name required!";
     } else {
 
-        // Handle image upload
-        $machine_image = "";
-        if(isset($_FILES['machine_image']['name']) && $_FILES['machine_image']['name'] != ""){
-            $imageName = time() . "_" . basename($_FILES['machine_image']['name']);
-            $targetPath = "../uploads/" . $imageName;
-            if(move_uploaded_file($_FILES['machine_image']['tmp_name'], $targetPath)){
-                $machine_image = $imageName;
-            }
+        /* SAVE CUSTOMER IF NOT EXISTS */
+        $chk = mysqli_query($conn, "SELECT id FROM customers WHERE phone='$customer_phone'");
+        if (mysqli_num_rows($chk) == 0) {
+            mysqli_query($conn, "
+                INSERT INTO customers(phone, name, city, created_at)
+                VALUES('$customer_phone','$customer_name','$customer_city',NOW())
+            ");
         }
 
-        // Insert record
-        $query = "
-            INSERT INTO jobcards (
+        /* IMAGE UPLOAD */
+        $machine_image = "";
+        if (!empty($_FILES['machine_image']['name'])) {
+            $img = time() . "_" . basename($_FILES['machine_image']['name']);
+            move_uploaded_file($_FILES['machine_image']['tmp_name'], "../uploads/$img");
+            $machine_image = $img;
+        }
+
+        /* INSERT JOBCARD */
+        mysqli_query($conn, "
+            INSERT INTO jobcards(
                 jobcard_no, jobcard_date,
                 customer_phone, customer_name, customer_city,
                 machine_image, machine_name, serial_number,
                 work_type, remarks, created_at
-            )
-            VALUES (
+            ) VALUES (
                 '$jobcard_no', NOW(),
-                '$customer_phone', '$customer_name', '$customer_city',
-                '$machine_image', '$machine_name', '$serial_number',
-                '$work_type', '$remarks', NOW()
+                '$customer_phone','$customer_name','$customer_city',
+                '$machine_image','$machine_name','$serial_number',
+                '$work_type','$remarks',NOW()
             )
-        ";
+        ");
 
-        if(mysqli_query($conn, $query)){
-            $success = "Jobcard created successfully!";
-        } else {
-            $error = "Error: " . mysqli_error($conn);
-        }
+            $_SESSION['success'] = "Jobcard created successfully!";
+            header("Location: create.php");
+            exit();
+        
     }
 }
-
 ?>
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Create Jobcard</title>
     <link rel="stylesheet" href="../style.css">
+    <style>
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, .6)
+        }
+
+        .modal-content {
+            background: #fff;
+            width: 400px;
+            margin: 100px auto;
+            padding: 20px
+        }
+
+        .readonly {
+            background: #eee
+        }
+    </style>
 </head>
+
 <body>
+    <?php include("../includes/header.php"); ?>
 
-<?php include("../includes/header.php"); ?>
+    <div class="container">
+        <div class="card">
 
-<div class="container">
-    <div class="card">
-        <h2>Create Jobcard</h2>
+            <h2>Create Jobcard</h2>
+            <?= $success ? "<p style='color:green'>$success</p>" : "" ?>
+            <?= $error ? "<p style='color:red'>$error</p>" : "" ?>
 
-        <!-- Success/Error Messages -->
-        <?php if($success != ""): ?>
-            <p style="color:green;"><?php echo $success; ?></p>
-        <?php endif; ?>
+            <form method="POST" enctype="multipart/form-data">
 
-        <?php if($error != ""): ?>
-            <p style="color:red;"><?php echo $error; ?></p>
-        <?php endif; ?>
+                <h3>Jobcard Info</h3>
+                <div class="grid">
+                    <input value="<?= $jobcard_no ?>" readonly class="readonly">
+                    <input value="<?= date('Y-m-d') ?>" readonly class="readonly">
+                </div>
 
+                <h3>Customer</h3>
+                <div class="grid">
 
-        <form method="POST" enctype="multipart/form-data">
+                    <select name="customer_phone" onchange="fillCustomer(this.value)">
+                        <option value="">Select Phone</option>
+                        <?php while ($c = mysqli_fetch_assoc($customers)) { ?>
+                            <option value="<?= $c['phone'] ?>"
+                                data-name="<?= $c['name'] ?>"
+                                data-city="<?= $c['city'] ?>">
+                                <?= $c['phone'] ?>
+                            </option>
+                        <?php } ?>
+                    </select>
 
-            <h3>Jobcard Info</h3>
-            <label>Jobcard Number</label>
-            <input type="text" value="<?php echo $jobcard_no; ?>" disabled>
+                    <input id="cname" name="customer_name" placeholder="Customer Name">
+                    <input id="ccity" name="customer_city" placeholder="City">
 
-            <label>Date</label>
-            <input type="text" value="<?php echo date("Y-m-d"); ?>" disabled>
+                </div>
 
-            <h3>Customer Information</h3>
+                <button type="button" class="btn" onclick="openCustomer()">+ Add New Customer</button>
 
-            <label>Phone Number *</label>
-            <input type="text" name="customer_phone" required>
+                <hr>
 
-            <label>Customer Name *</label>
-            <input type="text" name="customer_name" required>
+                <h3>Machine Details</h3>
+                <div class="grid">
+                    <input type="file" name="machine_image">
+                    <input name="machine_name" placeholder="Machine Name">
+                    <input name="serial_number" placeholder="Serial Number">
+                </div>
+
+                <label>Work Type</label>
+                <select name="work_type">
+                    <option>Service</option>
+                    <option>Total Checkup</option>
+                    <option>Free Service</option>
+                </select>
+
+                <label>Remarks</label>
+                <textarea name="remarks"></textarea>
+
+                <br><br>
+                <button class="btn">Create Jobcard</button>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- CUSTOMER MODAL -->
+    <div class="modal" id="custModal">
+        <div class="modal-content">
+            <h3>New Customer</h3>
+
+            <label>Phone</label>
+            <input id="mphone">
+
+            <label>Name</label>
+            <input id="mname">
 
             <label>City</label>
-            <input type="text" name="customer_city">
-
-            <button type="button" class="btn" onclick="clearCustomer()">Clear Customer Info</button>
-
-            <script>
-                function clearCustomer(){
-                    document.getElementsByName('customer_phone')[0].value = "";
-                    document.getElementsByName('customer_name')[0].value = "";
-                    document.getElementsByName('customer_city')[0].value = "";
-                }
-            </script>
-
-            <h3>Machine & Work Details</h3>
-
-            <label>Machine Image</label>
-            <input type="file" name="machine_image">
-
-            <label>Machine Name</label>
-            <input type="text" name="machine_name">
-
-            <label>Serial Number</label>
-            <input type="text" name="serial_number">
-
-            <label>Work Type</label>
-            <select name="work_type">
-                <option value="Service">Service</option>
-                <option value="Total Checkup">Total Checkup</option>
-                <option value="Free Service">Free Service</option>
-            </select>
-
-            <label>Remarks</label>
-            <textarea name="remarks"></textarea>
+            <input id="mcity">
 
             <br><br>
-            <button type="submit" class="btn">Create Jobcard</button>
-        </form>
+            <button class="btn" onclick="saveCustomer()">Save</button>
+            <button class="btn" style="background:#7f8c8d" onclick="closeCustomer()">Cancel</button>
+        </div>
     </div>
-</div>
 
-<?php include("../includes/footer.php"); ?>
+    <?php include("../includes/footer.php"); ?>
+
+    <script>
+        function fillCustomer(phone) {
+            let opt = document.querySelector("option[value='" + phone + "']");
+            if (!opt) return;
+            cname.value = opt.dataset.name;
+            ccity.value = opt.dataset.city;
+        }
+
+        function openCustomer() {
+            custModal.style.display = 'block';
+        }
+
+        function closeCustomer() {
+            custModal.style.display = 'none';
+        }
+
+        function saveCustomer() {
+            cname.value = mname.value;
+            ccity.value = mcity.value;
+
+            let o = document.createElement("option");
+            o.value = mphone.value;
+            o.text = mphone.value;
+            o.dataset.name = mname.value;
+            o.dataset.city = mcity.value;
+            o.selected = true;
+
+            document.querySelector("[name='customer_phone']").appendChild(o);
+            closeCustomer();
+        }
+    </script>
 
 </body>
+
 </html>

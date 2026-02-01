@@ -3,277 +3,229 @@ session_start();
 require_once("../config/db.php");
 require_once("../includes/functions.php");
 
-// Check login
-if(!isset($_SESSION['user_id'])){
+if (!isset($_SESSION['user_id'])) {
     redirect("../login/login.php");
 }
 
-// Check ID
-if(!isset($_GET['id'])){
+if (!isset($_GET['id'])) {
     redirect("list.php");
 }
+
 $sale_id = intval($_GET['id']);
 
-// Fetch order
-$orderQ = mysqli_query($conn, "SELECT * FROM sales WHERE id=$sale_id LIMIT 1");
-if(mysqli_num_rows($orderQ) == 0){
-    redirect("list.php");
-}
+/* FETCH SALE */
+$orderQ = mysqli_query($conn, "SELECT * FROM sales WHERE id=$sale_id");
 $order = mysqli_fetch_assoc($orderQ);
 
-// Fetch items
-$itemQ = mysqli_query($conn, "SELECT * FROM sales_items WHERE sale_id=$sale_id");
+/* FETCH ITEMS */
+$itemQ = mysqli_query($conn, "SELECT si.*, st.id AS stock_id 
+    FROM sales_items si
+    LEFT JOIN stock st ON si.item_name = st.item_name
+    WHERE si.sale_id=$sale_id");
 
-$success = "";
-$error = "";
+/* FETCH STOCK */
+$stockQ = mysqli_query($conn, "SELECT * FROM stock ORDER BY item_name");
 
-// On update
-if($_SERVER['REQUEST_METHOD'] == "POST"){
+$success = $error = "";
+
+/* UPDATE */
+if ($_SERVER['REQUEST_METHOD'] === "POST") {
 
     $order_status = clean($_POST['order_status']);
-    $order_date   = clean($_POST['order_date']);
-    $customer_phone = clean($_POST['customer_phone']);
-    $customer_name  = clean($_POST['customer_name']);
-    $addr1 = clean($_POST['addr1']);
-    $addr2 = clean($_POST['addr2']);
-    $city  = clean($_POST['city']);
-
+    $sales_date   = clean($_POST['sales_date']);
     $total_amount = floatval($_POST['total_amount']);
     $paid_amount  = floatval($_POST['paid_amount']);
     $balance      = floatval($_POST['balance']);
 
-    // Update order table
-    $u = "
-        UPDATE sales SET 
+    mysqli_query($conn, "
+        UPDATE sales SET
             order_status='$order_status',
-            order_date='$order_date',
-            customer_phone='$customer_phone',
-            customer_name='$customer_name',
-            addr1='$addr1',
-            addr2='$addr2',
-            city='$city',
+            sales_date='$sales_date',
             total_amount='$total_amount',
             paid_amount='$paid_amount',
             balance='$balance'
         WHERE id=$sale_id
-    ";
+    ");
 
-    if(mysqli_query($conn, $u)){
+    mysqli_query($conn, "DELETE FROM sales_items WHERE sale_id=$sale_id");
 
-        // Delete existing items
-        mysqli_query($conn, "DELETE FROM sales_items WHERE sale_id=$sale_id");
+    foreach ($_POST['stock_id'] as $i => $sid) {
 
-        // Re-insert updated items
-        foreach($_POST['item'] as $i => $item_name){
+        if (!$sid) continue;
 
-            if(trim($item_name) == "") continue;
+        $qty   = floatval($_POST['qty'][$i]);
+        $price = floatval($_POST['price'][$i]);
+        $tpr   = floatval($_POST['tprice'][$i]);
 
-            $part = clean($_POST['part'][$i]);
-            $qty  = floatval($_POST['qty'][$i]);
-            $price = floatval($_POST['price'][$i]);
-            $gst   = floatval($_POST['gst'][$i]);
-            $tprice = floatval($_POST['tprice'][$i]);
-
-            // Image upload
-            $item_img = "";
-            if(isset($_FILES['item_img']['name'][$i]) && $_FILES['item_img']['name'][$i] != ""){
-                $imgName = time()."_".basename($_FILES['item_img']['name'][$i]);
-                $path = "../uploads/".$imgName;
-                if(move_uploaded_file($_FILES['item_img']['tmp_name'][$i], $path)){
-                    $item_img = $imgName;
-                }
-            }
-
-            mysqli_query($conn, "
-                INSERT INTO sales_items (
-                    sale_id, item_name, part_no, qty,
-                    price_per_qty, gst_percent, total_price, item_image
-                ) VALUES (
-                    '$sale_id', '$item_name', '$part', '$qty',
-                    '$price', '$gst', '$tprice', '$item_img'
-                )
-            ");
-        }
-
-        $success = "Sales order updated successfully!";
-        // Refresh new data
-        $orderQ = mysqli_query($conn, "SELECT * FROM sales WHERE id=$sale_id LIMIT 1");
-        $order = mysqli_fetch_assoc($orderQ);
-        $itemQ = mysqli_query($conn, "SELECT * FROM sales_items WHERE sale_id=$sale_id");
-
-    } else {
-        $error = "Error updating order!";
+        mysqli_query($conn, "
+            INSERT INTO sales_items
+            (sale_id, item_name, qty, price_per_qty, total_price)
+            SELECT
+                '$sale_id', item_name, '$qty', '$price', '$tpr'
+            FROM stock WHERE id='$sid'
+        ");
     }
-}
+
+$_SESSION['success'] = "Sales updated successfully!";
+    header("Location:list.php");
+    exit;}
 ?>
+
 <!DOCTYPE html>
 <html>
-<head>
-    <title>Edit Sales Order</title>
-    <link rel="stylesheet" href="../style.css">
 
+<head>
+    <title>Edit Sales</title>
+    <link rel="stylesheet" href="../style.css">
     <style>
-        .item-row{border:1px solid #ddd;padding:10px;margin-bottom:10px;border-radius:5px;}
-        .delete-btn{background:#e74c3c;color:#fff;padding:5px 10px;border-radius:4px;cursor:pointer;}
-        .add-btn{background:#2ecc71;color:#fff;padding:7px 15px;border-radius:4px;cursor:pointer;}
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px
+        }
+
+        .item-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            gap: 10px;
+            margin-bottom: 8px
+        }
+
+        .add-btn {
+            color: #2980b9;
+            font-weight: bold;
+            cursor: pointer
+        }
+
+        .remove {
+            background: #e74c3c;
+            color: #fff;
+            border: none;
+            padding: 5px
+        }
+
+        .readonly {
+            background: #eee
+        }
     </style>
 </head>
+
 <body>
+    <?php include("../includes/header.php"); ?>
 
-<?php include("../includes/header.php"); ?>
-<div class="container">
-    <div class="card">
-        <h2>Edit Sales Order</h2>
+    <div class="container">
+        <div class="card">
 
-        <?php if($success!=""){ echo "<p style='color:green;'>$success</p>"; } ?>
-        <?php if($error!=""){ echo "<p style='color:red;'>$error</p>"; } ?>
+            <h2>Edit Sales</h2>
+            <?= $success ? "<p style='color:green'>$success</p>" : "" ?>
 
-        <form method="POST" enctype="multipart/form-data">
+            <form method="POST">
 
-            <h3>Order Info</h3>
-
-            <label>Order Status</label>
-            <select name="order_status">
-                <option value="New" <?php if($order['order_status']=="New") echo "selected"; ?>>New</option>
-                <option value="Invoice" <?php if($order['order_status']=="Invoice") echo "selected"; ?>>Invoice</option>
-            </select>
-
-            <label>Order Date</label>
-            <input type="date" name="order_date" value="<?php echo $order['order_date']; ?>">
-
-            <h3>Customer Information</h3>
-
-            <label>Phone Number</label>
-            <input type="text" name="customer_phone" value="<?php echo $order['customer_phone']; ?>">
-
-            <label>Customer Name</label>
-            <input type="text" name="customer_name" value="<?php echo $order['customer_name']; ?>">
-
-            <label>Address Line 1</label>
-            <input type="text" name="addr1" value="<?php echo $order['addr1']; ?>">
-
-            <label>Address Line 2</label>
-            <input type="text" name="addr2" value="<?php echo $order['addr2']; ?>">
-
-            <label>City</label>
-            <input type="text" name="city" value="<?php echo $order['city']; ?>">
-
-            <br><br>
-            <h3>Sales Items</h3>
-
-            <div id="items-container">
-
-                <?php while($item = mysqli_fetch_assoc($itemQ)) { ?>
-                <div class="item-row">
-
-                    <label>Current Image</label><br>
-                    <?php if($item['item_image']!=""){ ?>
-                        <img src="../uploads/<?php echo $item['item_image']; ?>" width="60">
-                    <?php } else { echo "No Image"; } ?>
-                    <br>
-
-                    <label>Change Image</label>
-                    <input type="file" name="item_img[]">
-
-                    <label>Item Name</label>
-                    <input type="text" name="item[]" value="<?php echo $item['item_name']; ?>">
-
-                    <label>Part/Serial No.</label>
-                    <input type="text" name="part[]" value="<?php echo $item['part_no']; ?>">
-
-                    <label>Quantity</label>
-                    <input type="number" step="0.01" name="qty[]" value="<?php echo $item['qty']; ?>" onkeyup="calcRow(this)">
-
-                    <label>Price / Qty</label>
-                    <input type="number" step="0.01" name="price[]" value="<?php echo $item['price_per_qty']; ?>" onkeyup="calcRow(this)">
-
-                    <label>GST %</label>
-                    <input type="number" step="0.01" name="gst[]" value="<?php echo $item['gst_percent']; ?>" onkeyup="calcRow(this)">
-
-                    <label>Total Price</label>
-                    <input type="number" step="0.01" name="tprice[]" class="row-total" value="<?php echo $item['total_price']; ?>" readonly>
-
-                    <br>
-                    <span class="delete-btn" onclick="deleteRow(this)">Delete</span>
+                <h3>Order</h3>
+                <div class="grid">
+                    <select name="order_status">
+                        <option <?= $order['order_status'] == "New" ? "selected" : "" ?>>New</option>
+                        <option <?= $order['order_status'] == "Invoice" ? "selected" : "" ?>>Invoice</option>
+                    </select>
+                    <input type="date" name="sales_date" value="<?= $order['sales_date'] ?>">
                 </div>
-                <?php } ?>
 
-            </div>
+                <h3>Customer (Readonly)</h3>
+                <div class="grid">
+                    <input class="readonly" value="<?= $order['customer_phone'] ?>" readonly>
+                    <input class="readonly" value="<?= $order['customer_name'] ?>" readonly>
+                    <input class="readonly" value="<?= $order['city'] ?>" readonly>
+                </div>
 
-            <br>
-            <span class="add-btn" onclick="addItem()">+ Add New Item</span>
+                <h3>Items</h3>
+                <div id="items">
 
-            <br><br>
-            <h3>Payment Details</h3>
+                    <?php while ($it = mysqli_fetch_assoc($itemQ)) { ?>
+                        <div class="item-row">
+                            <select name="stock_id[]" onchange="setPrice(this)">
+                                <option value="">Item</option>
+                                <?php mysqli_data_seek($stockQ, 0);
+                                while ($s = mysqli_fetch_assoc($stockQ)) { ?>
+                                    <option value="<?= $s['id'] ?>" data-price="<?= $s['selling_price'] ?>"
+                                        <?= $s['item_name'] == $it['item_name'] ? "selected" : "" ?>>
+                                        <?= $s['item_name'] ?>
+                                    </option>
+                                <?php } ?>
+                            </select>
 
-            <label>Total Amount</label>
-            <input type="number" name="total_amount" id="total_amount" value="<?php echo $order['total_amount']; ?>" readonly>
+                            <input name="qty[]" value="<?= $it['qty'] ?>" onkeyup="calcRow(this)">
+                            <input name="price[]" value="<?= $it['price_per_qty'] ?>" onkeyup="calcRow(this)">
+                            <input name="tprice[]" class="row-total" value="<?= $it['total_price'] ?>" readonly>
+                            <button type="button" class="remove" onclick="this.parentNode.remove();calcTotal()">X</button>
+                        </div>
+                    <?php } ?>
 
-            <label>Paid Amount</label>
-            <input type="number" name="paid_amount" id="paid_amount" value="<?php echo $order['paid_amount']; ?>" onkeyup="updateBalance()">
+                </div>
 
-            <label>Balance</label>
-            <input type="number" name="balance" id="balance" value="<?php echo $order['balance']; ?>" readonly>
+                <span class="add-btn" onclick="addItem()">+ Add Item</span>
 
-            <br><br>
-            <button type="submit" class="btn">Update Order</button>
-            <a href="list.php" class="btn" style="background:#7f8c8d;">Back</a>
+                <h3>Payment</h3>
+                <div class="grid">
+                    <input id="total_amount" name="total_amount" value="<?= $order['total_amount'] ?>" readonly>
+                    <input id="paid_amount" name="paid_amount" value="<?= $order['paid_amount'] ?>" onkeyup="calcBalance()">
+                    <input id="balance" name="balance" value="<?= $order['balance'] ?>" readonly>
+                </div>
 
-        </form>
+                <br>
+                <button class="btn">Update Sales</button>
+                <a href="list.php" class="btn" style="background:#7f8c8d">Back</a>
+
+            </form>
+        </div>
     </div>
-</div>
 
-<?php include("../includes/footer.php"); ?>
+    <?php include("../includes/footer.php"); ?>
 
-<script>
-function calcRow(input){
-    var row = input.parentNode;
+    <script>
+        function setPrice(sel) {
+            let p = sel.options[sel.selectedIndex].dataset.price || 0;
+            sel.parentNode.children[2].value = p;
+            calcRow(sel);
+        }
 
-    var qty = parseFloat(row.querySelector("input[name='qty[]']").value) || 0;
-    var price = parseFloat(row.querySelector("input[name='price[]']").value) || 0;
-    var gst = parseFloat(row.querySelector("input[name='gst[]']").value) || 0;
+        function calcRow(el) {
+            let r = el.parentNode;
+            let q = +r.children[1].value || 0;
+            let p = +r.children[2].value || 0;
+            r.children[3].value = (q * p).toFixed(2);
+            calcTotal();
+        }
 
-    var gstAmt = (price * gst) / 100;
-    var total = (price + gstAmt) * qty;
+        function calcTotal() {
+            let t = 0;
+            document.querySelectorAll(".row-total").forEach(i => t += +i.value || 0);
+            total_amount.value = t.toFixed(2);
+            calcBalance();
+        }
 
-    row.querySelector("input[name='tprice[]']").value = total.toFixed(2);
+        function calcBalance() {
+            balance.value = (total_amount.value - paid_amount.value).toFixed(2);
+        }
 
-    calcTotalAmount();
-}
-
-function calcTotalAmount(){
-    var totals = document.querySelectorAll(".row-total");
-    var sum = 0;
-    totals.forEach(function(t){ sum += parseFloat(t.value) || 0; });
-
-    document.getElementById('total_amount').value = sum.toFixed(2);
-    updateBalance();
-}
-
-function updateBalance(){
-    var total = parseFloat(document.getElementById('total_amount').value) || 0;
-    var paid  = parseFloat(document.getElementById('paid_amount').value) || 0;
-    document.getElementById('balance').value = (total - paid).toFixed(2);
-}
-
-function deleteRow(btn){
-    btn.parentNode.remove();
-    calcTotalAmount();
-}
-
-function addItem(){
-    var container = document.getElementById('items-container');
-    var rows = container.getElementsByClassName('item-row');
-    var clone = rows[0].cloneNode(true);
-
-    clone.querySelectorAll("input").forEach(function(inp){
-        if(inp.type == "file"){ inp.value = ""; }
-        else{ inp.value = ""; }
-    });
-
-    container.appendChild(clone);
-}
-</script>
+        function addItem() {
+            let d = document.createElement('div');
+            d.className = "item-row";
+            d.innerHTML = `
+<select name="stock_id[]" onchange="setPrice(this)">
+<option value="">Item</option>
+<?php mysqli_data_seek($stockQ, 0);
+while ($s = mysqli_fetch_assoc($stockQ)) { ?>
+<option value="<?= $s['id'] ?>" data-price="<?= $s['selling_price'] ?>"><?= $s['item_name'] ?></option>
+<?php } ?>
+</select>
+<input name="qty[]" value="1" onkeyup="calcRow(this)">
+<input name="price[]" onkeyup="calcRow(this)">
+<input name="tprice[]" class="row-total" readonly>
+<button type="button" class="remove" onclick="this.parentNode.remove();calcTotal()">X</button>`;
+            items.appendChild(d);
+        }
+    </script>
 
 </body>
+
 </html>

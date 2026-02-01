@@ -153,7 +153,7 @@ $data = mysqli_fetch_assoc($r);
                 <input type="file" name="stock_image">
 
                 <!-- ITEM -->
-                <div class="section-title">Item De  tails</div>
+                <div class="section-title">Item Details</div>
                 <div class="form-grid grid-3">
                     <input type="text" name="item_name" value="<?= $data['item_name'] ?>" placeholder="Item Name" required>
 

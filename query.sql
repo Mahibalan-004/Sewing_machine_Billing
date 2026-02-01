@@ -136,3 +136,62 @@ CREATE TABLE outing (
 );
 
 COMMIT;
+
+
+
+CREATE TABLE customers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    phone VARCHAR(15) UNIQUE,
+    name VARCHAR(100),
+    addr1 VARCHAR(255),
+    addr2 VARCHAR(255),
+    city VARCHAR(100),
+    created_at DATETIME
+);
+
+
+CREATE TABLE sales (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    order_status VARCHAR(20),     
+    sales_date DATE,              
+
+    customer_id INT,
+    customer_phone VARCHAR(20),
+    customer_name VARCHAR(100),
+    addr1 VARCHAR(200),
+    addr2 VARCHAR(200),
+    city VARCHAR(100),
+
+    total_amount DECIMAL(10,2),
+    paid_amount DECIMAL(10,2),
+    balance DECIMAL(10,2),
+
+    created_at DATETIME,
+
+    INDEX (customer_id)
+) ENGINE=InnoDB;
+
+
+CREATE TABLE sales_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    sale_id INT NOT NULL,
+    stock_id INT,
+
+    item_name VARCHAR(150),
+    part_no VARCHAR(120),
+
+    qty DECIMAL(10,2),
+    price_per_qty DECIMAL(10,2),
+    gst_percent DECIMAL(10,2),
+    total_price DECIMAL(10,2),
+
+    item_image VARCHAR(200),
+
+    CONSTRAINT fk_sales_items_sale
+        FOREIGN KEY (sale_id) REFERENCES sales(id)
+        ON DELETE CASCADE,
+
+    INDEX (stock_id)
+) ENGINE=InnoDB;

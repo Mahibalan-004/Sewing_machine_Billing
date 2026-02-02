@@ -57,7 +57,7 @@ $result = mysqli_query($conn, $query);
     <div class="container">
         <div class="card">
 
-            <h2>Jobcard List</h2>
+            <h2 align="center">Jobcard List</h2>
 
             <?php if ($success != ""): ?>
                 <p style="color:green"><?= $success ?></p>
@@ -72,7 +72,7 @@ $result = mysqli_query($conn, $query);
                 <a href="list.php" class="btn" style="background:#7f8c8d">Reset</a>
             </form>
 
-            <a href="create.php" class="btn" style="margin-bottom:15px;">+ Create New Jobcard</a>
+            <center><a href="create.php" class="btn" style="margin-bottom:15px;">+ Create New Jobcard</a></center>
 
             <table>
                 <tr>

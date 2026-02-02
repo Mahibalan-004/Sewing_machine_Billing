@@ -93,13 +93,16 @@ if (isset($_GET['success'])) {
         .grid-3 {
             grid-template-columns: repeat(3, 1fr)
         }
-
-        .section-title {
-            margin: 25px 0 10px;
-            font-size: 18px;
-            font-weight: bold
+        .section-title{
+            background: #f5f7fa;
+            padding: 10px 15px;
+            border-left: 16px solid #3498db;
+            border-radius: 6px;
         }
-
+        .section-title:hover{
+            color:#3498db;
+            transition:0.3s ease;
+        }
         /* MODAL */
         .modal {
             display: none;

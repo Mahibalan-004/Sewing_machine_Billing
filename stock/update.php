@@ -113,11 +113,15 @@ $data = mysqli_fetch_assoc($r);
             grid-template-columns: repeat(3, 1fr)
         }
 
-        .section-title {
-            margin: 25px 0 10px;
-            font-size: 18px;
-            font-weight: 600;
-            color: #2c3e50
+        .section-title{
+            background: #f5f7fa;
+            padding: 10px 15px;
+            border-left: 16px solid #3498db;
+            border-radius: 6px;
+        }
+        .section-title:hover{
+            color:#3498db;
+            transition:0.3s ease;
         }
 
         .alert-success {
@@ -209,8 +213,8 @@ $data = mysqli_fetch_assoc($r);
                 <input type="number" name="warranty_months" value="<?= $data['warranty_months'] ?>">
 
                 <br>
-                <button class="btn">Update Stock</button>
-                <a href="list.php" class="btn" style="background:#7f8c8d">Back</a>
+                <center><button class="btn">Update Stock</button>
+                <a href="list.php" class="btn" style="background:#7f8c8d">Back</a></center>
 
             </form>
         </div>

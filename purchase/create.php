@@ -130,12 +130,24 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
             gap: 12px
         }
 
+        .section-title {
+            background: #f5f7fa;
+            padding: 10px 15px;
+            border-left: 16px solid #3498db;
+            border-radius: 6px;
+        }
+
+        .section-title:hover {
+            color: #3498db;
+            transition: 0.3s ease;
+        }
+
         .item-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr 1.2fr 1.2fr 40px;
-    gap: 8px;
-    margin-bottom: 6px;
-}
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr 1.2fr 1.2fr 40px;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
 
         .del-btn {
             background: #d9534f;
@@ -145,42 +157,42 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
         }
     </style>
 
-<script>
-function supplierToggle(val) {
-    document.getElementById("supplierSelect").disabled = val === "new";
-    document.querySelectorAll(".sup-input").forEach(i => {
-        i.disabled = val !== "new";
-        if (val !== "new") i.value = "";
-    });
-}
+    <script>
+        function supplierToggle(val) {
+            document.getElementById("supplierSelect").disabled = val === "new";
+            document.querySelectorAll(".sup-input").forEach(i => {
+                i.disabled = val !== "new";
+                if (val !== "new") i.value = "";
+            });
+        }
 
-function calcRow(el) {
-    let row = el.closest(".item-row");
+        function calcRow(el) {
+            let row = el.closest(".item-row");
 
-    let qty = parseFloat(row.querySelector("input[name='qty[]']").value) || 0;
-    let price = parseFloat(row.querySelector("input[name='purchase_price[]']").value) || 0;
+            let qty = parseFloat(row.querySelector("input[name='qty[]']").value) || 0;
+            let price = parseFloat(row.querySelector("input[name='purchase_price[]']").value) || 0;
 
-    row.querySelector("input[name='total_price[]']").value =
-        (qty * price).toFixed(2);
-}
+            row.querySelector("input[name='total_price[]']").value =
+                (qty * price).toFixed(2);
+        }
 
-function addRow() {
-    let row = document.querySelector(".item-row").cloneNode(true);
+        function addRow() {
+            let row = document.querySelector(".item-row").cloneNode(true);
 
-    row.querySelectorAll("input").forEach(i => i.value = "");
+            row.querySelectorAll("input").forEach(i => i.value = "");
 
-    document.getElementById("items").appendChild(row);
-}
+            document.getElementById("items").appendChild(row);
+        }
 
-function removeRow(btn) {
-    let rows = document.querySelectorAll(".item-row");
-    if (rows.length > 1) {
-        btn.closest(".item-row").remove();
-    } else {
-        alert("At least one item is required");
-    }
-}
-</script>
+        function removeRow(btn) {
+            let rows = document.querySelectorAll(".item-row");
+            if (rows.length > 1) {
+                btn.closest(".item-row").remove();
+            } else {
+                alert("At least one item is required");
+            }
+        }
+    </script>
 
 </head>
 
@@ -190,11 +202,11 @@ function removeRow(btn) {
     <div class="container">
         <div class="card">
 
-            <h2>Create Purchase</h2>
+            <h2 align="center">Create Purchase</h2>
 
             <form method="POST">
 
-                <h3>Purchase Info</h3>
+                <h3 class="section-title">Purchase Info</h3>
                 <div class="grid-2">
                     <div>
                         <label>Purchase No</label>
@@ -204,9 +216,9 @@ function removeRow(btn) {
                         <label>Order Date</label>
                         <input value="<?= $order_date ?>" readonly>
                     </div>
-                </div>
+                </div><br>
 
-                <h3>Supplier</h3>
+                <h3 class="section-title">Supplier</h3>
                 <div class="grid-2">
                     <select name="supplier_type" onchange="supplierToggle(this.value)">
                         <option value="existing">Existing Supplier</option>
@@ -228,40 +240,37 @@ function removeRow(btn) {
                     <input class="sup-input" name="addr2" placeholder="Address 2" disabled>
                     <input class="sup-input" name="city" placeholder="City" disabled>
                     <input class="sup-input" name="pincode" placeholder="Pincode" disabled>
+                </div><br>
+
+                <h3 class="section-title">Items</h3>
+
+                <div id="items">
+                    <div class="item-row">
+                        <input name="item_name[]" placeholder="Item Name" required>
+
+                        <input name="brand[]" placeholder="Brand">
+
+                        <input name="model[]" placeholder="Model">
+
+                        <input type="number" name="qty[]" placeholder="Qty"
+                            min="1" oninput="calcRow(this)" required>
+
+                        <input type="number" step="0.01" name="purchase_price[]"
+                            placeholder="Purchase Price" oninput="calcRow(this)" required>
+
+                        <input type="number" step="0.01" name="selling_price[]"
+                            placeholder="Selling Price">
+
+                        <input type="number" step="0.01" name="total_price[]"
+                            placeholder="Total" readonly>
+
+                        <button type="button" class="del-btn" onclick="removeRow(this)">❌</button>
+                    </div>
                 </div>
 
-                <h3>Items</h3>
+                <button type="button" onclick="addRow()">+ Add Item</button><br><br>
 
-<div id="items">
-    <div class="item-row">
-        <input name="item_name[]" placeholder="Item Name" required>
-
-        <input name="brand[]" placeholder="Brand">
-
-        <input name="model[]" placeholder="Model">
-
-        <input type="number" name="qty[]" placeholder="Qty"
-               min="1" oninput="calcRow(this)" required>
-
-        <input type="number" step="0.01" name="purchase_price[]"
-               placeholder="Purchase Price" oninput="calcRow(this)" required>
-
-        <input type="number" step="0.01" name="selling_price[]"
-               placeholder="Selling Price">
-
-        <input type="number" step="0.01" name="total_price[]"
-               placeholder="Total" readonly>
-
-        <button type="button" class="del-btn" onclick="removeRow(this)">❌</button>
-    </div>
-</div>
-
-<button type="button" onclick="addRow()">+ Add Item</button>
-
-
-                <button type="button" onclick="addRow()">+ Add Item</button>
-
-                <h3>Payment</h3>
+                <h3 class="section-title">Payment</h3>
                 <div class="grid-4">
                     <input type="date" name="payment_date">
                     <input name="payment_mode" placeholder="Mode">
@@ -270,8 +279,8 @@ function removeRow(btn) {
                 </div>
 
                 <br>
-                <button class="btn">Submit Purchase</button>
-                <button type="reset" class="btn">Clear</button>
+                <center><button class="btn">Submit Purchase</button>
+                <button type="reset" class="btn">Clear</button></center>
 
             </form>
 

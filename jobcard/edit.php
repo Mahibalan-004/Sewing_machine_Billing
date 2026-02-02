@@ -150,6 +150,16 @@ if (isset($_POST['add_labour'])) {
         .readonly {
             background: #f3f3f3
         }
+        .section-title{
+            background: #f5f7fa;
+            padding: 10px 15px;
+            border-left: 16px solid #3498db;
+            border-radius: 6px;
+        }
+        .section-title:hover{
+            color:#3498db;
+            transition:0.3s ease;
+        }
 
         table {
             width: 100%;
@@ -170,25 +180,25 @@ if (isset($_POST['add_labour'])) {
     <div class="container">
         <div class="card">
 
-            <h2>Edit Jobcard</h2>
+            <h2 align="center">Edit Jobcard</h2>
 
             <!-- ================= JOB INFO ================= -->
-            <h3>Jobcard Info</h3>
+            <h3  class="section-title">Jobcard Info</h3>
             <div class="grid-2">
                 <input value="<?= $data['jobcard_no'] ?>" readonly class="readonly">
                 <input value="<?= $data['jobcard_date'] ?>" readonly class="readonly">
-            </div>
+            </div><br>
 
             <!-- ================= CUSTOMER ================= -->
-            <h3>Customer Info</h3>
+            <h3 class="section-title">Customer Info</h3>
             <div class="grid">
                 <input value="<?= $data['customer_phone'] ?>" readonly class="readonly">
                 <input value="<?= $data['customer_name'] ?>" readonly class="readonly">
                 <input value="<?= $data['customer_city'] ?>" readonly class="readonly">
-            </div>
+            </div><br>
 
             <!-- ================= MACHINE ================= -->
-            <h3>Machine & Work</h3>
+            <h3 class="section-title">Machine & Work</h3>
             <div class="grid">
                 <input value="<?= $data['machine_name'] ?>" readonly class="readonly">
                 <input value="<?= $data['serial_number'] ?>" readonly class="readonly">
@@ -202,7 +212,7 @@ if (isset($_POST['add_labour'])) {
             <!-- ================= STATUS & PAYMENT ================= -->
             <form method="POST">
 
-                <h3>Job Status</h3>
+                <h3 class="section-title">Job Status</h3>
                 <select name="job_status" required>
                     <option <?= $data['job_status'] == "New Job" ? "selected" : "" ?>>New Job</option>
                     <option <?= $data['job_status'] == "In Progress" ? "selected" : "" ?>>In Progress</option>
@@ -210,22 +220,22 @@ if (isset($_POST['add_labour'])) {
                     <option <?= $data['job_status'] == "Delivered" ? "selected" : "" ?>>Delivered</option>
                 </select>
 
-                <h3>Payment</h3>
+                <h3 class="section-title">Payment</h3>
                 <input type="number" step="0.01" name="paid_amount"
                     value="<?= $data['paid_amount'] ?>" required>
 
-                <h3>Grand Total</h3>
+                <h3 class="section-title">Grand Total</h3>
                 <input value="₹<?= number_format($grandTotal, 2) ?>" readonly class="readonly">
 
                 <br><br>
-                <button class="btn" name="update_jobcard">Update Jobcard</button>
+                <center><button class="btn" name="update_jobcard">Update Jobcard</button></center>
 
             </form>
 
-            <hr>
+            <br>
 
             <!-- ================= SPARES ================= -->
-            <h3>Spares</h3>
+            <h3 class="section-title">Spares</h3>
             <form method="POST" class="grid">
                 <select name="stock_id" required>
                     <option value="">Select Spare</option>
@@ -260,7 +270,7 @@ if (isset($_POST['add_labour'])) {
             <hr>
 
             <!-- ================= LABOUR ================= -->
-            <h3>Labour</h3>
+            <h3 class="section-title">Labour</h3>
             <form method="POST" class="grid">
                 <input name="labour_name" required>
                 <input type="number" step="0.01" name="labour_cost" required>

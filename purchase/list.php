@@ -51,18 +51,18 @@ $result = mysqli_query($conn, $query);
 <div class="container">
 <div class="card">
 
-    <h2>Purchase List</h2>
+    <h2 align="center">Purchase List</h2>
 
     <!-- SEARCH -->
     <form method="GET" style="margin-bottom:15px;">
         <input type="text" name="search"
                placeholder="Search Purchase No / Supplier Phone"
                value="<?= htmlspecialchars($search) ?>">
-        <button class="btn">Search</button>
-        <a href="list.php" class="btn" style="background:#7f8c8d">Clear</a>
+        <center><button class="btn">Search</button>
+        <a href="list.php" class="btn" style="background:#7f8c8d">Clear</a></center>
     </form>
 
-    <a href="create.php" class="btn" style="margin-bottom:15px;">+ New Purchase</a>
+    <center><a href="create.php" class="btn" style="margin-bottom:15px;">+ New Purchase</a></center>         
 
     <table>
         <tr>

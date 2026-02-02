@@ -102,7 +102,16 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
             margin: 100px auto;
             padding: 20px
         }
-
+        .section-title{
+            background: #f5f7fa;
+            padding: 10px 15px;
+            border-left: 16px solid #3498db;
+            border-radius: 6px;
+        }
+        .section-title:hover{
+            color:#3498db;
+            transition:0.3s ease;
+        }
         .readonly {
             background: #eee
         }
@@ -115,19 +124,19 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
     <div class="container">
         <div class="card">
 
-            <h2>Create Jobcard</h2>
+            <h2 align="center">Create Jobcard</h2>
             <?= $success ? "<p style='color:green'>$success</p>" : "" ?>
             <?= $error ? "<p style='color:red'>$error</p>" : "" ?>
 
             <form method="POST" enctype="multipart/form-data">
 
-                <h3>Jobcard Info</h3>
+                <h3  class="section-title">Jobcard Info</h3>
                 <div class="grid">
                     <input value="<?= $jobcard_no ?>" readonly class="readonly">
                     <input value="<?= date('Y-m-d') ?>" readonly class="readonly">
                 </div>
-
-                <h3>Customer</h3>
+<br>
+                <h3 class="section-title">Customer</h3>
                 <div class="grid">
 
                     <select name="customer_phone" onchange="fillCustomer(this.value)">
@@ -148,9 +157,8 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
 
                 <button type="button" class="btn" onclick="openCustomer()">+ Add New Customer</button>
 
-                <hr>
-
-                <h3>Machine Details</h3>
+            <br><br>
+                <h3 class="section-title">Machine Details</h3>
                 <div class="grid">
                     <input type="file" name="machine_image">
                     <input name="machine_name" placeholder="Machine Name">

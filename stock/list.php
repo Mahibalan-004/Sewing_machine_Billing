@@ -32,9 +32,9 @@ $result = mysqli_query($conn, $query);
 <div class="container">
 
     <div class="card">
-        <h2>Stock List</h2>
+        <h2 align="center">Stock List</h2>
 
-        <a href="new.php" class="btn" style="margin-bottom:15px;">+ Add New Stock</a>
+        <center><a href="new.php" class="btn" style="margin-bottom:15px;">+ Add New Stock</a></center>
 
         <table>
             <tr>
@@ -46,7 +46,7 @@ $result = mysqli_query($conn, $query);
                 <th>Total Stock</th>
                 <th>Reorder Level</th>
                 <th>Price</th>
-                <th>Warranty (Months)</th>
+                <!-- <th>Warranty (Months)</th> -->
                 <th>Actions</th>
             </tr>
 
@@ -73,7 +73,7 @@ $result = mysqli_query($conn, $query);
                         ₹ <?php echo number_format($row['selling_price'], 2); ?>
                     </td>
 
-                    <td><?php echo $row['warranty_months']; ?></td>
+                    <!-- <td><?php echo $row['warranty_months']; ?></td> -->
 
                     <td>
                         <a class="btn" href="update.php?id=<?php echo $row['id']; ?>">Edit</a>

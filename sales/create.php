@@ -125,6 +125,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             gap: 8px;
             margin-bottom: 8px
         }
+                .section-title{
+            background: #f5f7fa;
+            padding: 10px 15px;
+            border-left: 16px solid #3498db;
+            border-radius: 6px;
+        }
+        .section-title:hover{
+            color:#3498db;
+            transition:0.3s ease;
+        }
 
         .remove {
             background: #e74c3c;
@@ -160,12 +170,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <div class="container">
         <div class="card">
-            <h2>Create Sales</h2>
+            <h2 align="center">Create Sales</h2>
             <?= $success ? "<p style='color:green'>$success</p>" : "" ?>
 
             <form method="POST">
 
-                <h3>Order</h3>
+                <h3 class="section-title">Order</h3>
                 <div class="grid-3">
                     <div>
                         <label>Order Status</label>
@@ -180,7 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </div>
                 </div>
 
-                <h3>Customer</h3>
+                <h3 class="section-title">Customer</h3>
                 <div class="grid-3">
                     <div>
                         <label>Phone Number</label>
@@ -209,13 +219,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 <hr>
 
-                <h3>Items</h3>
+                <h3 class="section-title">Items</h3>
                 <div id="items"></div>
                 <span class="add-btn" onclick="addItem()">+ Add Item</span>
 
                 <hr>
 
-                <h3>Payment</h3>
+                <h3 class="section-title">Payment</h3>
                 <div class="grid-3">
                     <div><label>Total</label><input id="total_amount" name="total_amount" readonly></div>
                     <div><label>Paid</label><input id="paid_amount" name="paid_amount" onkeyup="calcBalance()" required></div>

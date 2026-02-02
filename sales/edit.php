@@ -103,7 +103,16 @@ $_SESSION['success'] = "Sales updated successfully!";
             border: none;
             padding: 5px
         }
-
+        .section-title{
+            background: #f5f7fa;
+            padding: 10px 15px;
+            border-left: 16px solid #3498db;
+            border-radius: 6px;
+        }
+        .section-title:hover{
+            color:#3498db;
+            transition:0.3s ease;
+        }
         .readonly {
             background: #eee
         }
@@ -116,12 +125,12 @@ $_SESSION['success'] = "Sales updated successfully!";
     <div class="container">
         <div class="card">
 
-            <h2>Edit Sales</h2>
+            <h2 align="center">Edit Sales</h2>
             <?= $success ? "<p style='color:green'>$success</p>" : "" ?>
 
             <form method="POST">
 
-                <h3>Order</h3>
+                <h3  class="section-title">Order</h3>
                 <div class="grid">
                     <select name="order_status">
                         <option <?= $order['order_status'] == "New" ? "selected" : "" ?>>New</option>
@@ -130,14 +139,14 @@ $_SESSION['success'] = "Sales updated successfully!";
                     <input type="date" name="sales_date" value="<?= $order['sales_date'] ?>">
                 </div>
 
-                <h3>Customer (Readonly)</h3>
+                <h3 class="section-title">Customer (Readonly)</h3>
                 <div class="grid">
                     <input class="readonly" value="<?= $order['customer_phone'] ?>" readonly>
                     <input class="readonly" value="<?= $order['customer_name'] ?>" readonly>
                     <input class="readonly" value="<?= $order['city'] ?>" readonly>
                 </div>
 
-                <h3>Items</h3>
+                <h3 class="section-title">Items</h3>
                 <div id="items">
 
                     <?php while ($it = mysqli_fetch_assoc($itemQ)) { ?>
@@ -164,7 +173,7 @@ $_SESSION['success'] = "Sales updated successfully!";
 
                 <span class="add-btn" onclick="addItem()">+ Add Item</span>
 
-                <h3>Payment</h3>
+                <h3 class="section-title">Payment</h3>
                 <div class="grid">
                     <input id="total_amount" name="total_amount" value="<?= $order['total_amount'] ?>" readonly>
                     <input id="paid_amount" name="paid_amount" value="<?= $order['paid_amount'] ?>" onkeyup="calcBalance()">

@@ -51,11 +51,11 @@ if (!$result) {
     <div class="container">
         <div class="card">
 
-            <h2>Sales Order List</h2>
-
-            <a href="create.php" class="btn" style="margin-bottom:15px;">
+            <h2 align="center">Sales Order List</h2>
+            <center>
+            <a href="create.php" class="btn" style="margin-bottom:15px;" a>
                 + Create New Sales Order
-            </a>
+            </a></center>
 
             <table>
                 <tr>
